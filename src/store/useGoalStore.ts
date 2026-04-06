@@ -9,7 +9,6 @@ import {
   insertStreak,
   updateGoal,
 } from "@/db/queries/goals";
-import { triggerHealthScoreRefresh } from "@/utils/healthScoreHelper";
 import { Analytics } from "@/utils/analytics";
 
 type GoalStore = {
@@ -70,7 +69,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     updateGoal(id, { currentAmount: next, isCompleted: isComp });
     if (isComp && !g.isCompleted) set({ celebratingGoalId: id });
     get().loadGoals();
-    void triggerHealthScoreRefresh();
   },
   recordStreakEntry: (e) => {
     const row: StreakEntry = {

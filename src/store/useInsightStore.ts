@@ -3,6 +3,8 @@ import { create } from "zustand";
 import type { Insight } from "@/types/insight";
 import { calculateInsights as compute } from "@/utils/calculateInsights";
 import { useTransactionStore } from "./useTransactionStore";
+import { fetchAllCategories } from "@/db/queries/categories";
+import { fetchGoals } from "@/db/queries/goals";
 
 const DISMISS_KEY = "hp_dismissed_insights";
 
@@ -25,7 +27,10 @@ export const useInsightStore = create<InsightStore>((set, get) => ({
       dismissed = [];
     }
     const transactions = useTransactionStore.getState().transactions;
-    const insights = compute(transactions).filter((i) => !dismissed.includes(i.id));
+    const categories = fetchAllCategories() as any[];
+    const goals = fetchGoals() as any[];
+
+    const insights = compute(transactions, categories, goals).filter((i) => !dismissed.includes(i.id));
     set({ insights, lastCalculated: Date.now() });
   },
   dismissInsight: async (id: string) => {

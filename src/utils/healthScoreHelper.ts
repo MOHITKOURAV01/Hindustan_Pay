@@ -3,16 +3,9 @@ import { useTransactionStore } from "@/store/useTransactionStore";
 import { useGoalStore } from "@/store/useGoalStore";
 import { useEMIStore } from "@/store/useEMIStore";
 
-export async function triggerHealthScoreRefresh(force = false) {
+export async function triggerHealthScoreRefresh() {
   try {
-    const transactions = useTransactionStore.getState().transactions;
-    const goals = useGoalStore.getState().goals;
-    const emis = useEMIStore.getState().emis;
-    
-    await useHealthScoreStore.getState().refreshScore(
-      { transactions, goals, emis },
-      force
-    );
+    await useHealthScoreStore.getState().calculateScore();
   } catch (err) {
     console.error("[HealthScoreHelper] Failed to refresh score:", err);
   }

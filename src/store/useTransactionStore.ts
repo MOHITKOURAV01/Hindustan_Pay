@@ -1,5 +1,9 @@
+// Force rebuild
+import "react-native-gesture-handler";
 import { create } from "zustand";
 import type { FilterState, Transaction } from "@/types/transaction";
+// Removed triggerHealthScoreRefresh to break require cycle
+// Force rebuild to resolve stale bundle ReferenceError
 import {
   applyFilters,
   fetchTransactions,
@@ -10,7 +14,6 @@ import {
   toggleStarTransaction,
   updateTransaction as dbUpdate,
 } from "@/db/queries/transactions";
-import { triggerHealthScoreRefresh } from "@/utils/healthScoreHelper";
 import { Analytics } from "@/utils/analytics";
 
 export const defaultTransactionFilters: FilterState = {
@@ -54,22 +57,18 @@ export const useTransactionStore = create<TxStore>((set, get) => ({
     dbInsert(t);
     Analytics.track("transaction_added", { amount: t.amount, category: t.categoryId });
     get().loadTransactions();
-    void triggerHealthScoreRefresh();
   },
   updateTransaction: (id, patch) => {
     dbUpdate(id, patch);
     get().loadTransactions();
-    void triggerHealthScoreRefresh();
   },
   deleteTransaction: (id) => {
     softDeleteTransaction(id);
     get().loadTransactions();
-    void triggerHealthScoreRefresh();
   },
   bulkDeleteTransactions: (ids) => {
     softDeleteTransactions(ids);
     get().loadTransactions();
-    void triggerHealthScoreRefresh();
   },
   setFilters: (f) =>
     set((s) => ({ filters: { ...s.filters, ...f } })),
