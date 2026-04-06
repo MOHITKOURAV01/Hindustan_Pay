@@ -145,6 +145,3 @@ Expo Go is limited (e.g. some GL / biometric behaviors).
 - Apple Watch / Wear companion  
 - Desktop shell (Electron)
 
-## License
-
-MIT
