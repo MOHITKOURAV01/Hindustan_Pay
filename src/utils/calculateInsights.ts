@@ -11,13 +11,12 @@ import {
 } from "date-fns";
 import type { Transaction } from "@/types/transaction";
 import type { Insight, InsightKind } from "@/types/insight";
-import { fetchAllCategories } from "@/db/queries/categories";
-import { fetchGoals } from "@/db/queries/goals";
+import type { Category } from "@/types/category";
+import type { Goal } from "@/types/goal";
 
-function categoryName(id: string | null): string {
+function categoryName(id: string | null, categories: Category[]): string {
   if (!id) return "Uncategorized";
-  const rows = fetchAllCategories();
-  return rows.find((c) => c.id === id)?.name ?? "Other";
+  return categories.find((c) => c.id === id)?.name ?? "Other";
 }
 
 function pushInsight(
@@ -44,7 +43,11 @@ function pushInsight(
   });
 }
 
-export function calculateInsights(transactions: Transaction[]): Insight[] {
+export function calculateInsights(
+  transactions: Transaction[],
+  categories: Category[] = [],
+  goals: Goal[] = [],
+): Insight[] {
   const active = transactions.filter((t) => !t.isDeleted && !t.isArchived);
   const now = Date.now();
   const thisMonthStart = startOfMonth(now).getTime();
@@ -82,7 +85,7 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
 
   if (topCat && topAmt > 0 && expenseTotalThis > 0) {
     const pct = Math.round((topAmt / expenseTotalThis) * 100);
-    const name = categoryName(topCat);
+    const name = categoryName(topCat, categories);
     pushInsight(
       insights,
       "insight_TOP_CATEGORY",
@@ -184,7 +187,6 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
     pushInsight(insights, "insight_PEAK_TIME", "PEAK_TIME", "Peak activity", body, "info", "clock-outline", "#FFB347");
   }
 
-  const goals = fetchGoals();
   const streakGoal = goals.find((g) => !g.isCompleted && g.streakCount > 0);
   if (streakGoal) {
     pushInsight(
@@ -217,7 +219,6 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
     );
   }
 
-  /** Recurring heuristic: same title must appear in at least 2 distinct calendar months. */
   const titleMonth = new Map<string, Set<string>>();
   for (const t of active) {
     if (t.type !== "expense" || !t.title) continue;
@@ -260,6 +261,7 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
       "warning",
       "arrow-up-bold",
       "#FF6B9D",
+      largest.amount,
     );
   }
 
@@ -279,7 +281,7 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
       `insight_SPIKE_${w.catId}`,
       "CATEGORY_SPIKE",
       "Category spike",
-      `${categoryName(w.catId)} spending spiked ${Math.round(w.spike)}% vs last month`,
+      `${categoryName(w.catId, categories)} spending spiked ${Math.round(w.spike)}% vs last month`,
       "warning",
       "trending-up",
       "#FF6B9D",
@@ -311,9 +313,7 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
     }
   }
 
-  // --- SAVINGS SUGGESTIONS (Feature 8) ---
   const catAverages = new Map<string, number>();
-  // Analyze last 3 months for averages
   for (let i = 1; i <= 3; i++) {
     const d = subMonths(now, i);
     const s = startOfMonth(d).getTime();
@@ -328,9 +328,8 @@ export function calculateInsights(transactions: Transaction[]): Insight[] {
   expThis.forEach((thisMonthVal, catId) => {
     const avg = catAverages.get(catId) ?? 0;
     if (avg > 0 && thisMonthVal > avg * 1.25) {
-      // Over 25% above average
       const diff = thisMonthVal - avg;
-      const name = categoryName(catId);
+      const name = categoryName(catId, categories);
       pushInsight(
         insights,
         `suggestion_SAVINGS_${catId}`,
