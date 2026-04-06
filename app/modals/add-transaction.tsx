@@ -46,7 +46,7 @@ const paymentModeOptions: { value: PaymentMode; label: string; icon: string; col
 
 export default function AddTransactionModal() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: string; duplicateFrom?: string }>();
+  const params = useLocalSearchParams<{ type?: string; preset?: string; duplicateFrom?: string }>();
   const { colors } = useTheme();
   const currency = useCurrency();
   const add = useTransactionStore((s) => s.addTransaction);
@@ -69,7 +69,7 @@ export default function AddTransactionModal() {
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       amount: 0,
-      type: params.type === "income" ? "income" : "expense",
+      type: (params.type === "income" || params.preset === "income") ? "income" : "expense",
       categoryId: "",
       title: "",
       notes: "",
@@ -81,10 +81,11 @@ export default function AddTransactionModal() {
   const selectedMode = watch("paymentMode") as PaymentMode | undefined;
 
   useEffect(() => {
-    if (params.type === "income" || params.type === "expense") {
-      setValue("type", params.type);
+    const t = params.type || params.preset;
+    if (t === "income" || t === "expense") {
+      setValue("type", t);
     }
-  }, [params.type, setValue]);
+  }, [params.type, params.preset, setValue]);
 
   useEffect(() => {
     void (async () => {

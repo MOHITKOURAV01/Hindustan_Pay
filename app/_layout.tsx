@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import {
   useFonts,
   Inter_400Regular,
@@ -28,6 +28,7 @@ import { registerBudgetBackgroundFetch } from "@/utils/notifications";
 import { Analytics } from "@/utils/analytics";
 import * as Linking from "expo-linking";
 import { AppState, type AppStateStatus } from "react-native";
+import { useAuthStore } from "@/store/useAuthStore";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -64,8 +65,38 @@ export default function RootLayout() {
   useEffect(() => {
     const handleUrl = (url: string | null) => {
       if (!url) return;
-      const { path, queryParams } = Linking.parse(url);
-      console.log("[DeepLink] Received:", path, queryParams);
+      const { path } = Linking.parse(url);
+      if (!path) return;
+
+      // Wait for auth before navigating
+      const tryNavigate = () => {
+        const { isUnlocked } = useAuthStore.getState();
+        if (!isUnlocked) {
+          setTimeout(tryNavigate, 500);
+          return;
+        }
+        switch (path) {
+          case "add-expense":
+            router.push({
+              pathname: "/modals/add-transaction",
+              params: { preset: "expense" },
+            });
+            break;
+          case "add-income":
+            router.push({
+              pathname: "/modals/add-transaction",
+              params: { preset: "income" },
+            });
+            break;
+          case "goals":
+            router.push("/(tabs)/goals");
+            break;
+          case "insights":
+            router.push("/(tabs)/insights");
+            break;
+        }
+      };
+      setTimeout(tryNavigate, 800); // give app time to finish auth
     };
     const sub = Linking.addEventListener("url", (e: { url: string }) => handleUrl(e.url));
     void Linking.getInitialURL().then((url: string | null) => {
