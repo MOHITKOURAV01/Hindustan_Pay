@@ -14,30 +14,38 @@ import {
   sumExpenseInCategoryForRange,
 } from "@/db/queries/budgets";
 import { fetchAllCategories } from "@/db/queries/categories";
+import Constants from "expo-constants";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+const IS_EXPO_GO = Constants.appOwnership === "expo" || Constants.executionEnvironment === "storeClient";
+const IS_WEB = Platform.OS === "web";
+
+if (!IS_WEB && !IS_EXPO_GO) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export const BUDGET_CHECK_TASK = "BUDGET_CHECK_TASK";
 
-TaskManager.defineTask(BUDGET_CHECK_TASK, async () => {
-  try {
-    await checkBudgetAndNotify();
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-  } catch {
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-});
+if (!IS_WEB && !IS_EXPO_GO) {
+  TaskManager.defineTask(BUDGET_CHECK_TASK, async () => {
+    try {
+      await checkBudgetAndNotify();
+      return BackgroundFetch.BackgroundFetchResult.NewData;
+    } catch {
+      return BackgroundFetch.BackgroundFetchResult.Failed;
+    }
+  });
+}
 
 export async function registerBudgetBackgroundFetch(): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   try {
     const registered = await TaskManager.isTaskRegisteredAsync(BUDGET_CHECK_TASK);
     if (registered) return;
@@ -52,7 +60,7 @@ export async function registerBudgetBackgroundFetch(): Promise<void> {
 }
 
 export async function unregisterBudgetBackgroundFetch(): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   try {
     const registered = await TaskManager.isTaskRegisteredAsync(BUDGET_CHECK_TASK);
     if (registered) await BackgroundFetch.unregisterTaskAsync(BUDGET_CHECK_TASK);
@@ -62,6 +70,7 @@ export async function unregisterBudgetBackgroundFetch(): Promise<void> {
 }
 
 async function cancelBudgetCategoryNotifications(): Promise<void> {
+  if (IS_WEB || IS_EXPO_GO) return;
   const all = await Notifications.getAllScheduledNotificationsAsync();
   for (const r of all) {
     const kind = r.content.data?.hpKind;
@@ -72,6 +81,7 @@ async function cancelBudgetCategoryNotifications(): Promise<void> {
 }
 
 export async function ensureNotificationPermissions(): Promise<boolean> {
+  if (IS_WEB || IS_EXPO_GO) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === "granted") return true;
   const { status } = await Notifications.requestPermissionsAsync();
@@ -79,7 +89,7 @@ export async function ensureNotificationPermissions(): Promise<boolean> {
 }
 
 export async function checkBudgetAndNotify(): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   const settings = useSettingsStore.getState().notificationSettings;
   if (!settings.budgetAlerts) return;
   const ok = await ensureNotificationPermissions();
@@ -116,6 +126,7 @@ export async function checkBudgetAndNotify(): Promise<void> {
 }
 
 export async function scheduleOrCancelBudgetAlerts(settings: NotificationSettings): Promise<void> {
+  if (IS_WEB || IS_EXPO_GO) return;
   await cancelBudgetCategoryNotifications();
   if (!settings.budgetAlerts) {
     await unregisterBudgetBackgroundFetch();
@@ -127,7 +138,7 @@ export async function scheduleOrCancelBudgetAlerts(settings: NotificationSetting
 }
 
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   await Notifications.cancelScheduledNotificationAsync("hp_daily_reminder").catch(() => {});
   await Notifications.scheduleNotificationAsync({
     identifier: "hp_daily_reminder",
@@ -145,11 +156,12 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
 }
 
 export async function cancelDailyReminder(): Promise<void> {
+  if (IS_WEB || IS_EXPO_GO) return;
   await Notifications.cancelScheduledNotificationAsync("hp_daily_reminder").catch(() => {});
 }
 
 export async function scheduleWeeklySummary(dayOfWeek: number, hour: number, minute: number): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   await Notifications.cancelScheduledNotificationAsync("hp_weekly_summary").catch(() => {});
   await Notifications.scheduleNotificationAsync({
     identifier: "hp_weekly_summary",
@@ -168,6 +180,7 @@ export async function scheduleWeeklySummary(dayOfWeek: number, hour: number, min
 }
 
 export async function cancelWeeklySummary(): Promise<void> {
+  if (IS_WEB || IS_EXPO_GO) return;
   await Notifications.cancelScheduledNotificationAsync("hp_weekly_summary").catch(() => {});
 }
 
@@ -176,7 +189,7 @@ export async function scheduleStreakReminder(
   streakCount: number,
   goalName: string,
 ): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   const id = `hp_streak_${goalId}`;
   await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
 
@@ -201,7 +214,7 @@ export async function scheduleStreakReminder(
 }
 
 export async function sendBudgetAlert(categoryName: string, pct: number): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "Budget alert",
@@ -213,7 +226,7 @@ export async function sendBudgetAlert(categoryName: string, pct: number): Promis
 }
 
 export async function scheduleEMIReminder(emi: EMI): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (IS_WEB || IS_EXPO_GO) return;
   const id = `emi_${emi.id}`;
   await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
   if (!emi.isActive) return;

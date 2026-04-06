@@ -1,9 +1,13 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { format } from "date-fns";
-import { generatePDF } from "react-native-html-to-pdf";
+import { Platform, Alert } from "react-native";
 import { fetchTransactions, applyFilters } from "@/db/queries/transactions";
 import { fetchAllCategories } from "@/db/queries/categories";
 import type { FilterState } from "@/types/transaction";
+import Constants from "expo-constants";
+
+const IS_EXPO_GO = Constants.appOwnership === "expo" || Constants.executionEnvironment === "storeClient";
+const IS_WEB = Platform.OS === "web";
 
 function catName(id: string | null, byId: Map<string, string>): string {
   if (!id) return "";
@@ -47,6 +51,29 @@ export async function exportTransactionsToCSV(filters?: FilterState): Promise<st
 }
 
 export async function exportSummaryPDF(): Promise<string> {
+  if (IS_EXPO_GO || IS_WEB) {
+    const msg = IS_WEB 
+      ? "PDF Export is not supported on Web. Please use a mobile device."
+      : "PDF Export requires a Custom Development Build and and is not supported in Expo Go.";
+    Alert.alert("Feature Not Available", msg);
+    throw new Error(msg);
+  }
+
+  // Use dynamic require to prevent crash during bundle evaluation in Expo Go/Web
+  let generatePDF;
+  try {
+    const pkg = require("react-native-html-to-pdf");
+    generatePDF = pkg.generatePDF;
+  } catch (e) {
+    console.warn("[PDF] Failed to load react-native-html-to-pdf:", e);
+    Alert.alert("Error", "PDF module could not be loaded. This feature requires a native build.");
+    throw new Error("PDF module not found");
+  }
+
+  if (!generatePDF) {
+    throw new Error("generatePDF function not found in module");
+  }
+
   const rows = fetchTransactions();
   const active = rows.filter((t) => !t.isDeleted && !t.isArchived);
   const now = Date.now();
