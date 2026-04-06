@@ -49,7 +49,7 @@ function HomeBody() {
   const txs = useTransactionStore((s) => s.transactions);
   const loadTransactions = useTransactionStore((s) => s.loadTransactions);
   const { emis, loadEMIs } = useEMIStore();
-  const { score, history, refreshScore } = useHealthScoreStore();
+  const { score, calculateScore } = useHealthScoreStore();
   const { insights } = useInsights();
   const calculateInsights = useInsightStore((s) => s.calculateInsights);
   const showToast = useToastStore((s) => s.show);
@@ -72,7 +72,7 @@ function HomeBody() {
     try {
       loadTransactions();
       void loadEMIs();
-      void refreshScore();
+      void calculateScore();
       const n = processRecurringTransactions();
       if (n > 0) loadTransactions();
       await calculateInsights();
@@ -80,12 +80,12 @@ function HomeBody() {
     } finally {
       setRefreshing(false);
     }
-  }, [loadTransactions, calculateInsights, showToast, loadEMIs, refreshScore]);
+  }, [loadTransactions, calculateInsights, showToast, loadEMIs, calculateScore]);
 
   useFocusEffect(
     useCallback(() => {
-      void refreshScore();
-    }, [refreshScore]),
+      void calculateScore();
+    }, [calculateScore]),
   );
 
   const now = Date.now();
@@ -259,7 +259,6 @@ function HomeBody() {
           <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
             <BalanceCard balance={balance} delta={delta} incomeMonth={incomeMonth} expenseMonth={expenseMonth} currency={currency} />
           </View>
-
           {score && (
             <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
               <HealthScoreCard
@@ -269,7 +268,7 @@ function HomeBody() {
                 color={score.color}
                 onPress={() => {
                   Analytics.track("health_score_checked", { score: score.score });
-                  healthSheetRef.current?.present(score, history);
+                  healthSheetRef.current?.present(score, []);
                 }}
               />
             </View>

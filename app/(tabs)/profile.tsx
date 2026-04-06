@@ -216,7 +216,8 @@ function ProfileBody() {
               {(["dark", "light", "system"] as const).map((t) => (
                 <Pressable key={t} onPress={() => {
                   setTheme(t);
-                  Analytics.track("theme_changed", { theme: t });
+                  setEdition("standard");
+                  Analytics.track("theme_changed", { theme: t, resetEdition: true });
                 }}>
                   <Text style={{ color: theme === t ? colors.primary : colors.textSecondary, textTransform: "capitalize" }}>{t}</Text>
                 </Pressable>
@@ -233,7 +234,10 @@ function ProfileBody() {
                   onPress={() => {
                     setEdition(e);
                     Analytics.track("edition_changed", { edition: e });
-                    showToast({ variant: "success", message: `${e.charAt(0).toUpperCase() + e.slice(1)} Edition active` });
+                    showToast({
+                      variant: "success",
+                      message: `${e.charAt(0).toUpperCase() + e.slice(1)} Edition active`,
+                    });
                   }}
                   style={{
                     paddingHorizontal: 12,
