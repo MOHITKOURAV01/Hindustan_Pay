@@ -2,7 +2,7 @@
 
 > Apna paisa, apna hisaab — Your money, your account.  
 > A premium personal finance companion built for India.  
-> Built as a screening assessment for Zorvyn — Mobile App Developer Intern role.
+
 
 ## Screenshots
 
